@@ -6,6 +6,8 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/kfifo.h>
+#include <linux/wait.h>
+
 
 #include "sx127x.h"
 
@@ -192,6 +194,8 @@ struct sx127x {
 	struct list_head device_entry;
 	dev_t devt;
 	bool open;
+	wait_queue_head_t readwq;
+	wait_queue_head_t writewq;
 };
 
 static LIST_HEAD(device_list);
@@ -613,16 +617,15 @@ static int sx127x_dev_open(struct inode *inode, struct file *file){
 	mutex_lock(&data->mutex);
 	if(data->open){
 		pr_debug("sx127x: already open\n");
+		status = -EBUSY;
 		goto err_open;
 	}
 	data->open = 1;
 	mutex_unlock(&data->mutex);
 
-
 	mutex_unlock(&device_list_lock);
 
 	file->private_data = data;
-
 	return 0;
 
 	err_open:
@@ -635,9 +638,13 @@ static int sx127x_dev_open(struct inode *inode, struct file *file){
 static ssize_t sx127x_dev_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos){
 	struct sx127x *data = filp->private_data;
 	unsigned copied;
-	int ret;
+	ssize_t ret = 0;
+	wait_event_interruptible(data->readwq, kfifo_len(&data->out));
 	ret = kfifo_to_user(&data->out, buf, count, &copied);
-	return copied;
+	if(!ret && copied > 0){
+		ret = copied;
+	}
+	return ret;
 }
 
 static ssize_t sx127x_dev_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos){
@@ -670,7 +677,7 @@ static irqreturn_t sx127x_irq(int irq, void *dev_id)
 
 static void sx127x_irq_work_handler(struct work_struct *work){
 	struct sx127x *data = container_of(work, struct sx127x, irq_work);
-	u8 irqflags, buf[128], len;
+	u8 irqflags, buf[128], len, snr, rssi;
 	u32 fei;
 	struct sx127x_pkt pkt;
 	mutex_lock(&data->mutex);
@@ -682,13 +689,19 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 		memset(&pkt, 0, sizeof(pkt));
 
 		sx127x_fifo_readpkt(data->spidevice, buf, &len);
+		sx127x_reg_read(data->spidevice, SX127X_REG_LORA_PKTSNRVALUE, &snr);
+		sx127x_reg_read(data->spidevice, SX127X_REG_LORA_PKTRSSIVALUE, &rssi);
 		sx127x_reg_read24(data->spidevice, SX127X_REG_LORA_FEIMSB, &fei);
 
 		pkt.hdrlen = sizeof(pkt);
 		pkt.payloadlen = len;
+		pkt.len = pkt.hdrlen + pkt.payloadlen;
+		pkt.snr = (__s16)(snr << 2) / 4 ;
+		pkt.rssi = -157 + rssi; //TODO fix this for the LF port
 
 		kfifo_in(&data->out, &pkt, sizeof(pkt));
 		kfifo_in(&data->out, buf, len);
+		wake_up(&data->readwq);
 	}
 	mutex_unlock(&data->mutex);
 }
@@ -709,8 +722,11 @@ static int sx127x_probe(struct spi_device *spi){
 		goto err_allocdevdata;
 	}
 
+	data->open = 0;
 	INIT_WORK(&data->irq_work, sx127x_irq_work_handler);
 	INIT_LIST_HEAD(&data->device_entry);
+	init_waitqueue_head(&data->readwq);
+	init_waitqueue_head(&data->writewq);
 	mutex_init(&data->mutex);
 	data->fosc = 32000000;
 	data->spidevice = spi;
