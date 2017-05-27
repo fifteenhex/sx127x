@@ -1,0 +1,14 @@
+&spi1 {
+	status = "okay";
+	sx127x@0 {
+		compatible = "semtech,sx127x";
+		reg = <0x0>;
+		pinctrl-0 = <&sx127x_rst_pin>;
+		reset-gpios = <&pio 0 2 GPIO_ACTIVE_LOW>; /* PA2 */
+		txrxswitch-gpios = <&pio 0 18 GPIO_ACTIVE_HIGH>, /* PA18 */
+			<&pio 3 14 GPIO_ACTIVE_HIGH>; /* PD14 */
+		interrupt-parent = <&pio>;
+		interrupts = <0 3 IRQ_TYPE_EDGE_RISING>; /* PA3 / EINT3 */
+		spi-max-frequency = <10000000>;
+	};
+};
