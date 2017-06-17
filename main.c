@@ -315,6 +315,8 @@ static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 	struct spi_transfer fifotransfers[2];
 	int ret;
 
+	memset(fifotransfers, 0, sizeof(fifotransfers));
+
 	fifotransfers[0].tx_buf = &addr;
 	fifotransfers[0].len = 1;
 	fifotransfers[1].tx_buf = buffer;
