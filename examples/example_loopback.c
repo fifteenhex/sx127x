@@ -23,6 +23,11 @@ int main(int argc, char** argv) {
 	if (fd < 0)
 		printf("failed to open device\n");
 
+	if(ioctl(fd, SX127X_IOCTL_CMD_SETPAOUTPUT, SX127X_PA_PABOOST) != 0){
+                printf("failed to set pa output\n");
+                return 1;
+        }
+
 	if(ioctl(fd, SX127X_IOCTL_CMD_SETMODULATION, SX127X_MODULATION_LORA) != 0){
 		printf("failed to set modulation\n");
 		return 1;
