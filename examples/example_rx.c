@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "sx127x.h"
+#include "common.h"
 
 int main(int argc, char** argv) {
 
@@ -10,6 +11,8 @@ int main(int argc, char** argv) {
 
 	if (fd < 0)
 		printf("failed to open device\n");
+	if (setupradio(fd))
+		return 1;
 
 	void* buff = malloc(1024);
 

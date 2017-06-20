@@ -356,14 +356,19 @@ static ssize_t sx127x_modulation_show(struct device *child, struct device_attrib
 	struct sx127x *data = dev_get_drvdata(child);
 	u8 opmode;
 	enum sx127x_modulation mod;
+	int ret;
+	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_OPMODE, &opmode);
 	mod = sx127x_getmodulation(opmode);
 	if(mod == SX127X_MODULATION_INVALID){
-		return sprintf(buf, "%s\n", invalid);
+		ret = sprintf(buf, "%s\n", invalid);
 	}
 	else{
-		return sprintf(buf, "%s\n", modstr[mod]);
+		ret = sprintf(buf, "%s\n", modstr[mod]);
 	}
+	mutex_unlock(&data->mutex);
+	return ret;
+
 }
 
 static int sx127x_setmodulation(struct sx127x *data, enum sx127x_modulation modulation){
@@ -414,14 +419,18 @@ static ssize_t sx127x_opmode_show(struct device *child, struct device_attribute 
 {
 	struct sx127x *data = dev_get_drvdata(child);
 	u8 opmode, mode;
+	int ret;
+	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_OPMODE, &opmode);
 	mode = opmode & SX127X_REG_OPMODE_MODE;
 	if(mode > 4 && (opmode & SX127X_REG_OPMODE_LONGRANGEMODE)){
-		return sprintf(buf, "%s\n", opmodestr[mode + 1]);
+		ret = sprintf(buf, "%s\n", opmodestr[mode + 1]);
 	}
 	else {
-		return sprintf(buf, "%s\n", opmodestr[mode]);
+		ret =sprintf(buf, "%s\n", opmodestr[mode]);
 	}
+	mutex_unlock(&data->mutex);
+	return ret;
 }
 
 static int sx127x_toggletxrxen(struct sx127x *data, bool tx){
@@ -633,15 +642,19 @@ static ssize_t sx127x_bw_show(struct device *dev, struct device_attribute *attr,
 {
 	struct sx127x *data = dev_get_drvdata(dev);
 	u8 config1;
-	int bw;
+	int bw, ret;
 
+	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_MODEMCONFIG1, &config1);
 	bw = config1 >> SX127X_REG_LORA_MODEMCONFIG1_BW_SHIFT;
-
-	if(bw > SX127X_REG_LORA_MODEMCONFIG1_BW_MAX)
-		return sprintf(buf, "invalid\n");
-
-    return sprintf(buf, "%d\n", bwmap[bw]);
+	if(bw > SX127X_REG_LORA_MODEMCONFIG1_BW_MAX){
+		ret = sprintf(buf, "invalid\n");
+	}
+	else {
+		ret = sprintf(buf, "%d\n", bwmap[bw]);
+	}
+	mutex_unlock(&data->mutex);
+	return ret;
 }
 
 static ssize_t sx127x_bw_store(struct device *dev, struct device_attribute *attr,
@@ -657,16 +670,20 @@ static ssize_t sx127x_codingrate_show(struct device *dev, struct device_attribut
 {
 	struct sx127x *data = dev_get_drvdata(dev);
 	u8 config1;
-	int cr;
+	int cr, ret;
 
+	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_MODEMCONFIG1, &config1);
 	cr = (config1 & SX127X_REG_LORA_MODEMCONFIG1_CODINGRATE) >> SX127X_REG_LORA_MODEMCONFIG1_CODINGRATE_SHIFT;
-
 	if(cr < SX127X_REG_LORA_MODEMCONFIG1_CODINGRATE_MIN ||
-			cr > SX127X_REG_LORA_MODEMCONFIG1_CODINGRATE_MAX)
-		return sprintf(buf, "invalid\n");
-
-    return sprintf(buf, "%s\n", crmap[cr]);
+			cr > SX127X_REG_LORA_MODEMCONFIG1_CODINGRATE_MAX){
+		ret = sprintf(buf, "invalid\n");
+	}
+	else {
+		ret = sprintf(buf, "%s\n", crmap[cr]);
+	}
+	mutex_unlock(&data->mutex);
+    return ret;
 }
 
 static ssize_t sx127x_codingrate_store(struct device *dev, struct device_attribute *attr,
@@ -683,9 +700,10 @@ static ssize_t sx127x_implicitheadermodeon_show(struct device *dev, struct devic
 	u8 config1;
 	int hdrmodeon;
 
+	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_MODEMCONFIG1, &config1);
 	hdrmodeon = config1 & SX127X_REG_LORA_MODEMCONFIG1_IMPLICITHEADERMODEON;
-
+	mutex_unlock(&data->mutex);
     return sprintf(buf, "%d\n", hdrmodeon);
 }
 
@@ -917,8 +935,6 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 	struct sx127x_pkt pkt;
 	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_IRQFLAGS, &irqflags);
-	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_IRQFLAGS, 0xff);
-
 	if(irqflags & SX127X_REG_LORA_IRQFLAGS_RXDONE){
 		dev_warn(&data->spidevice->dev, "reading packet\n");
 		memset(&pkt, 0, sizeof(pkt));
@@ -954,6 +970,7 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 	else {
 		dev_err(&data->spidevice->dev, "unhandled interrupt state\n");
 	}
+	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_IRQFLAGS, 0xff);
 	mutex_unlock(&data->mutex);
 }
 
