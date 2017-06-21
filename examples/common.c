@@ -1,7 +1,6 @@
 #include <stropts.h>
-
 #include "common.h"
-#include "sx127x.h"
+
 
 #define COLWIDTH 8
 #define OFFSET(r, c) ((r * COLWIDTH) + c)
@@ -19,7 +18,7 @@ void printhex(uint8_t* buff, size_t len) {
 	}
 }
 
-int setupradio(int fd) {
+int setupradio(int fd, enum sx127x_opmode opmode) {
 	if (ioctl(fd, SX127X_IOCTL_CMD_SETPAOUTPUT, SX127X_PA_PABOOST) != 0) {
 		printf("failed to set pa output\n");
 		return 1;
@@ -41,7 +40,7 @@ int setupradio(int fd) {
 		return 1;
 	}
 
-	if (ioctl(fd, SX127X_IOCTL_CMD_SETOPMODE, SX127X_OPMODE_RXCONTINUOS) != 0) {
+	if (ioctl(fd, SX127X_IOCTL_CMD_SETOPMODE, opmode) != 0) {
 		printf("failed to set opmode\n");
 		return 1;
 	}

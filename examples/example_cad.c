@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
 
 	if (fd < 0)
 		printf("failed to open device\n");
-	if (setupradio(fd, SX127X_OPMODE_RXCONTINUOS))
+	if (setupradio(fd, SX127X_OPMODE_CAD))
 		return 1;
 
 	void* buff = malloc(1024);
@@ -19,11 +19,9 @@ int main(int argc, char** argv) {
 	read(fd, buff, sizeof(size_t));
 	read(fd, buff + sizeof(size_t), *((size_t*) buff));
 
-	struct sx127x_pkt* pkt = buff;
-	void* payload = buff + pkt->hdrlen;
+	while (1) {
 
-	printf("payloadlen: %zd bytes, snr: %ddB, rssi: %ddBm\n", pkt->payloadlen,
-			(int) pkt->snr, (int) pkt->rssi);
+	}
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-all: example_tx example_rx example_loopback
+all: example_tx example_rx example_loopback example_cad
 
 example_tx: common.c example_tx.c
 	$(CC) -I../ $^ -o $@
@@ -7,6 +7,9 @@ example_rx: common.c example_rx.c
 	$(CC) -I../ $^ -o $@
 
 example_loopback: common.c example_loopback.c
+	$(CC) -I../ $^ -o $@
+
+example_cad: common.c example_cad.c
 	$(CC) -I../ $^ -o $@
 
 clean:

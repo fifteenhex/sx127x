@@ -69,6 +69,8 @@
 #define SX127X_REG_LORA_IRQFLAGS_RXTIMEOUT								BIT(7)
 #define SX127X_REG_LORA_IRQFLAGS_RXDONE									BIT(6)
 #define SX127X_REG_LORA_IRQFLAGS_TXDONE									BIT(3)
+#define SX127X_REG_LORA_IRQFLAGS_CADDONE								BIT(2)
+#define SX127X_REG_LORA_IRQFLAGS_CADDETECTED							BIT(0)
 
 #define SX127X_REG_FSKOOK_AFCBW											SX127X_FSKOOKREG(0x13)
 #define SX127X_REG_LORA_RXNBBYTES										SX127X_LORAREG(0x13)
@@ -223,7 +225,7 @@ static int sx127x_reg_read(struct spi_device *spi, u16 reg, u8* result){
 	int ret = spi_write_then_read(spi,
 			&addr, 1,
 			result, 1);
-	dev_warn(&spi->dev, "read: @%02x %02x\n", addr, *result);
+	dev_info(&spi->dev, "read: @%02x %02x\n", addr, *result);
 	return ret;
 }
 
@@ -232,7 +234,7 @@ static int sx127x_reg_read16(struct spi_device *spi, u16 reg, u16* result){
 	int ret = spi_write_then_read(spi,
 			&addr, 1,
 			result, 2);
-	dev_warn(&spi->dev, "read: @%02x %02x\n", addr, *result);
+	dev_info(&spi->dev, "read: @%02x %02x\n", addr, *result);
 	return ret;
 }
 
@@ -242,7 +244,7 @@ static int sx127x_reg_read24(struct spi_device *spi, u16 reg, u32* result){
 			&addr, 1,
 			buf, 3);
 	*result = (buf[0] << 16) | (buf[1] << 8) | buf[0];
-	dev_warn(&spi->dev, "read: @%02x %06x\n", addr, *result);
+	dev_info(&spi->dev, "read: @%02x %06x\n", addr, *result);
 	return ret;
 }
 
@@ -251,7 +253,7 @@ static int sx127x_reg_write(struct spi_device *spi, u16 reg, u8 value){
 	int ret;
 	buff[0] = SX127X_WRITEADDR(addr);
 	buff[1] = value;
-	dev_warn(&spi->dev, "write: @%02x %02x\n", addr, value);
+	dev_info(&spi->dev, "write: @%02x %02x\n", addr, value);
 	ret = spi_write(spi, buff, 2);
 //	ret = sx127x_reg_read(spi, reg, &readback);
 //	if(readback != value){
@@ -267,7 +269,7 @@ static int sx127x_reg_write24(struct spi_device *spi, u16 reg, u32 value){
 	buff[1] = (value >> 16) & 0xff;
 	buff[2] = (value >> 8) & 0xff;
 	buff[3] = value & 0xff;
-	dev_warn(&spi->dev, "write: @%02x %06x\n", addr, value);
+	dev_info(&spi->dev, "write: @%02x %06x\n", addr, value);
 	ret = spi_write(spi, buff, sizeof(buff));
 	return ret;
 }
@@ -452,7 +454,7 @@ static int sx127x_toggletxrxen(struct sx127x *data, bool tx){
 static int sx127x_setopmode(struct sx127x *data, enum sx127x_opmode mode, bool retain){
 	u8 opmode, diomapping1;
 	int ret = sx127x_reg_read(data->spidevice, SX127X_REG_OPMODE, &opmode);
-	if(mode < SX127X_OPMODE_SLEEP || mode > SX127X_OPMODE_RXCONTINUOS){
+	if(mode < SX127X_OPMODE_SLEEP || mode > SX127X_OPMODE_CAD){
 		ret = -EINVAL;
 		dev_err(data->chardevice, "invalid opmode\n");
 	}
@@ -472,6 +474,7 @@ static int sx127x_setopmode(struct sx127x *data, enum sx127x_opmode mode, bool r
 		switch(mode){
 		case SX127X_OPMODE_CAD:
 			diomapping1 |= SX127X_REG_DIOMAPPING1_DIO0_CADDONE;
+			sx127x_toggletxrxen(data, false);
 			break;
 		case SX127X_OPMODE_TX:
 			diomapping1 |= SX127X_REG_DIOMAPPING1_DIO0_TXDONE;
@@ -967,8 +970,16 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 		data->transmitted = 1;
 		wake_up(&data->writewq);
 	}
+	else if(irqflags & SX127X_REG_LORA_IRQFLAGS_CADDONE){
+		if(irqflags & SX127X_REG_LORA_IRQFLAGS_CADDETECTED){
+			dev_info(data->chardevice, "CAD done, detected activity\n");
+		}
+		else {
+			dev_info(data->chardevice, "CAD done, nothing detected\n");
+		}
+	}
 	else {
-		dev_err(&data->spidevice->dev, "unhandled interrupt state\n");
+		dev_err(&data->spidevice->dev, "unhandled interrupt state %02x\n", (unsigned) irqflags);
 	}
 	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_IRQFLAGS, 0xff);
 	mutex_unlock(&data->mutex);

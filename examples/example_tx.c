@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
 	if (fd < 0)
 		printf("failed to open device\n");
 
-	if (setupradio(fd))
+	if (setupradio(fd, SX127X_OPMODE_RXCONTINUOS))
 		return 1;
 
 	char helloworld[] = "hello, world\n";
