@@ -68,6 +68,7 @@
 #define SX127X_REG_LORA_IRQFLAGS										SX127X_LORAREG(0x12)
 #define SX127X_REG_LORA_IRQFLAGS_RXTIMEOUT								BIT(7)
 #define SX127X_REG_LORA_IRQFLAGS_RXDONE									BIT(6)
+#define SX127X_REG_LORA_IRQFLAGS_PAYLOADCRCERROR						BIT(5)
 #define SX127X_REG_LORA_IRQFLAGS_TXDONE									BIT(3)
 #define SX127X_REG_LORA_IRQFLAGS_CADDONE								BIT(2)
 #define SX127X_REG_LORA_IRQFLAGS_CADDETECTED							BIT(0)
@@ -939,7 +940,7 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 	mutex_lock(&data->mutex);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_IRQFLAGS, &irqflags);
 	if(irqflags & SX127X_REG_LORA_IRQFLAGS_RXDONE){
-		dev_warn(&data->spidevice->dev, "reading packet\n");
+		dev_warn(data->chardevice, "reading packet\n");
 		memset(&pkt, 0, sizeof(pkt));
 
 		sx127x_fifo_readpkt(data->spidevice, buf, &len);
@@ -952,6 +953,11 @@ static void sx127x_irq_work_handler(struct work_struct *work){
 		pkt.len = pkt.hdrlen + pkt.payloadlen;
 		pkt.snr = (__s16)(snr << 2) / 4 ;
 		pkt.rssi = -157 + rssi; //TODO fix this for the LF port
+
+		if(irqflags & SX127X_REG_LORA_IRQFLAGS_PAYLOADCRCERROR){
+			dev_warn(data->chardevice, "CRC Error for received payload\n");
+			pkt.crcfail = 1;
+		}
 
 		kfifo_in(&data->out, &pkt, sizeof(pkt));
 		kfifo_in(&data->out, buf, len);

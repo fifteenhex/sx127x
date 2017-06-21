@@ -53,6 +53,7 @@ struct sx127x_pkt {
 	__s16 snr;
 	__s16 rssi;
 	__u32 fei;
+	__u8 crcfail;
 } __attribute__ ((packed));
 
 

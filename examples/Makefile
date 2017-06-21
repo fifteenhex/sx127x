@@ -13,4 +13,4 @@ example_cad: common.c example_cad.c
 	$(CC) -I../ $^ -o $@
 
 clean:
-	rm -f example_tx example_rx example_loopback
+	rm -f example_tx example_rx example_loopback example_cad
