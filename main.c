@@ -504,6 +504,11 @@ static int sx127x_setopmode(struct sx127x *data, enum sx127x_opmode mode, bool r
 	return ret;
 }
 
+static int sx127x_setsyncword(struct sx127x *data, u8 syncword){
+	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_SYNCWORD, syncword);
+	return 0;
+}
+
 static ssize_t sx127x_opmode_store(struct device *dev, struct device_attribute *attr,
 			 const char *buf, size_t count){
 	struct sx127x *data = dev_get_drvdata(dev);
@@ -907,6 +912,12 @@ static long sx127x_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			ret = sx127x_setpaoutput(data, arg);
 			break;
 		case SX127X_IOCTL_CMD_GETPAOUTPUT:
+			ret = 0;
+			break;
+		case SX127X_IOCTL_CMD_SETSYNCWORD:
+			ret = sx127x_setsyncword(data, arg & 0xff);
+			break;
+		case SX127X_IOCTL_CMD_GETSYNCWORD:
 			ret = 0;
 			break;
 		default:
