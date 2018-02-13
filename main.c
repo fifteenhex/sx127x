@@ -308,23 +308,18 @@ static int sx127x_fifo_readpkt(struct spi_device *spi, void *buffer, u8 *len){
 
 static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 	u8 addr = SX127X_WRITEADDR(SX127X_REGADDR(SX127X_REG_FIFO));
-	struct spi_transfer fifotransfers[2];
 	int ret;
-
-	memset(fifotransfers, 0, sizeof(fifotransfers));
-
-	fifotransfers[0].tx_buf = &addr;
-	fifotransfers[0].len = 1;
-	fifotransfers[1].tx_buf = buffer;
-	fifotransfers[1].len = len;
+	struct spi_transfer fifotransfers[] = {
+			{.tx_buf = &addr, .len = 1},
+			{.tx_buf = buffer, .len = len},
+	};
 
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOTXBASEADDR, 0);
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOADDRPTR, 0);
+	ret = sx127x_reg_write(spi, SX127X_REG_LORA_PAYLOADLENGTH, len);
 
 	dev_info(&spi->dev, "fifo write: %d\n", len);
 	spi_sync_transfer(spi, fifotransfers, ARRAY_SIZE(fifotransfers));
-
-	ret = sx127x_reg_write(spi, SX127X_REG_LORA_PAYLOADLENGTH, len);
 
 	return ret;
 }
