@@ -314,6 +314,13 @@ static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 			{.tx_buf = buffer, .len = len},
 	};
 
+	u8 readbackaddr = SX127X_REGADDR(SX127X_REG_FIFO);
+	u8 readbackbuff[256];
+	struct spi_transer readbacktransfers[] = {
+			{.tx_buff = &readbackaddr, .len = 1},
+			{.rx_buff = &readbackbuff, .len = len},
+	};
+
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOTXBASEADDR, 0);
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOADDRPTR, 0);
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_PAYLOADLENGTH, len);
@@ -321,6 +328,11 @@ static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 	dev_info(&spi->dev, "fifo write: %d\n", len);
 	spi_sync_transfer(spi, fifotransfers, ARRAY_SIZE(fifotransfers));
 
+	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOADDRPTR, 0);
+	spi_sync_transfer(spi, readbacktransfers, ARRAY_SIZE(readbacktransfers));
+	if(memcmp(buffer, readbackbuff, len) != 0){
+		dev_err(&spi->dev, "fifo readback doesn't match\n");
+	}
 	return ret;
 }
 
