@@ -525,10 +525,22 @@ static int sx127x_setinvertiq(struct sx127x *data, bool invert){
 	dev_warn(data->chardevice, "setting invertiq to %d\n", invert);
 	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_INVERTIQ, &reg);
 	if(invert)
-		reg |= SX127X_REG_LORA_INVERTIQ;
+		reg |= SX127X_REG_LORA_INVERTIQ_INVERTIQ;
 	else
-		reg &= ~SX127X_REG_LORA_INVERTIQ;
+		reg &= ~SX127X_REG_LORA_INVERTIQ_INVERTIQ;
 	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_INVERTIQ, reg);
+	return 0;
+}
+
+static int sx127x_setcrc(struct sx127x *data, bool crc){
+	u8 reg;
+	dev_warn(data->chardevice, "setting crc to %d\n", crc);
+	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_MODEMCONFIG2, &reg);
+	if(crc)
+		reg |= SX127X_REG_LORA_MODEMCONFIG2_RXPAYLOADCRCON;
+	else
+		reg &= ~SX127X_REG_LORA_MODEMCONFIG2_RXPAYLOADCRCON;
+	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_MODEMCONFIG2, reg);
 	return 0;
 }
 
@@ -942,6 +954,12 @@ static long sx127x_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			ret = sx127x_setsyncword(data, arg & 0xff);
 			break;
 		case SX127X_IOCTL_CMD_GETSYNCWORD:
+			ret = 0;
+			break;
+		case SX127X_IOCTL_CMD_SETCRC:
+			ret = sx127x_setcrc(data, arg & 0x1);
+			break;
+		case SX127X_IOCTL_CMD_GETCRC:
 			ret = 0;
 			break;
 		case SX127X_IOCTL_CMD_SETINVERTIQ:
