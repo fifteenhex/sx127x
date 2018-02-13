@@ -107,6 +107,7 @@
 #define SX127X_REG_LORA_MODEMCONFIG2									SX127X_LORAREG(0x1e)
 #define SX127X_REG_LORA_MODEMCONFIG2_SPREADINGFACTOR					(BIT(7) | BIT(6) | BIT(5) | BIT(4))
 #define SX127X_REG_LORA_MODEMCONFIG2_SPREADINGFACTOR_SHIFT				4
+#define SX127X_REG_LORA_MODEMCONFIG2_RXPAYLOADCRCON						BIT(2)
 
 #define SX127X_REG_FSKOOK_PREAMBLEDETECT								SX127X_FSKOOKREG(0x1f)
 #define SX127X_REG_LORA_SYMBTIMEOUTLSB									SX127X_LORAREG(0x1f)
@@ -874,6 +875,7 @@ static ssize_t sx127x_dev_write(struct file *filp, const char __user *buf, size_
 		packetsz = min((count - offset), maxpkt);
 		mutex_lock(&data->mutex);
 		copy_from_user(kbuf, buf + offset, packetsz);
+		sx127x_setopmode(data, SX127X_OPMODE_STANDBY, false);
 		sx127x_fifo_writepkt(data->spidevice, kbuf, packetsz);
 		data->transmitted = 0;
 		sx127x_setopmode(data, SX127X_OPMODE_TX, false);
