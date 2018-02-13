@@ -316,7 +316,7 @@ static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 
 	u8 readbackaddr = SX127X_REGADDR(SX127X_REG_FIFO);
 	u8 readbackbuff[256];
-	struct spi_transer readbacktransfers[] = {
+	struct spi_transfer readbacktransfers[] = {
 			{.tx_buff = &readbackaddr, .len = 1},
 			{.rx_buff = &readbackbuff, .len = len},
 	};
