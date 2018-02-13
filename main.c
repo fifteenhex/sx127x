@@ -520,6 +520,7 @@ static int sx127x_setinvertiq(struct sx127x *data, bool invert){
 		reg |= SX127X_REG_LORA_INVERTIQ;
 	else
 		reg &= ~SX127X_REG_LORA_INVERTIQ;
+	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_INVERTIQ, reg);
 	return 0;
 }
 
