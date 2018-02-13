@@ -151,6 +151,8 @@
 #define SX127X_REG_FSKOOK_PAYLOADLENGTH									SX127X_FSKOOKREG(0x32)
 #define SX127X_REG_FSKOOK_NODEADRS										SX127X_FSKOOKREG(0x33)
 #define SX127X_REG_LORA_INVERTIQ										SX127X_LORAREG(0x33)
+#define SX127X_REG_LORA_INVERTIQ_INVERTIQ								BIT(6)
+
 #define SX127X_REG_FSKOOK_BROADCASTADRS									SX127X_FSKOOKREG(0x34)
 #define SX127X_REG_FSKOOK_FIFOTHRESH									SX127X_FSKOOKREG(0x35)
 #define SX127X_REG_FSKOOK_SEQCONFIG1									SX127X_FSKOOKREG(0x36)
@@ -505,7 +507,19 @@ static int sx127x_setopmode(struct sx127x *data, enum sx127x_opmode mode, bool r
 }
 
 static int sx127x_setsyncword(struct sx127x *data, u8 syncword){
+	dev_warn(data->chardevice, "setting syncword to %d\n", syncword);
 	sx127x_reg_write(data->spidevice, SX127X_REG_LORA_SYNCWORD, syncword);
+	return 0;
+}
+
+static int sx127x_setinvertiq(struct sx127x *data, bool invert){
+	u8 reg;
+	dev_warn(data->chardevice, "setting invertiq to %d\n", invert);
+	sx127x_reg_read(data->spidevice, SX127X_REG_LORA_INVERTIQ, &reg);
+	if(invert)
+		reg |= SX127X_REG_LORA_INVERTIQ;
+	else
+		reg &= ~SX127X_REG_LORA_INVERTIQ;
 	return 0;
 }
 
@@ -918,6 +932,12 @@ static long sx127x_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			ret = sx127x_setsyncword(data, arg & 0xff);
 			break;
 		case SX127X_IOCTL_CMD_GETSYNCWORD:
+			ret = 0;
+			break;
+		case SX127X_IOCTL_CMD_SETINVERTIQ:
+			ret = sx127x_setinvertiq(data, arg & 1);
+			break;
+		case SX127X_IOCTL_CMD_GETINVERTIQ:
 			ret = 0;
 			break;
 		default:
