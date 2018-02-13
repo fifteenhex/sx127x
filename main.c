@@ -226,7 +226,7 @@ static int sx127x_reg_read(struct spi_device *spi, u16 reg, u8* result){
 	int ret = spi_write_then_read(spi,
 			&addr, 1,
 			result, 1);
-	dev_info(&spi->dev, "read: @%02x %02x\n", addr, *result);
+	dev_dbg(&spi->dev, "read: @%02x %02x\n", addr, *result);
 	return ret;
 }
 
@@ -235,7 +235,7 @@ static int sx127x_reg_read16(struct spi_device *spi, u16 reg, u16* result){
 	int ret = spi_write_then_read(spi,
 			&addr, 1,
 			result, 2);
-	dev_info(&spi->dev, "read: @%02x %02x\n", addr, *result);
+	dev_dbg(&spi->dev, "read: @%02x %02x\n", addr, *result);
 	return ret;
 }
 
@@ -245,7 +245,7 @@ static int sx127x_reg_read24(struct spi_device *spi, u16 reg, u32* result){
 			&addr, 1,
 			buf, 3);
 	*result = (buf[0] << 16) | (buf[1] << 8) | buf[0];
-	dev_info(&spi->dev, "read: @%02x %06x\n", addr, *result);
+	dev_dbg(&spi->dev, "read: @%02x %06x\n", addr, *result);
 	return ret;
 }
 
@@ -254,7 +254,7 @@ static int sx127x_reg_write(struct spi_device *spi, u16 reg, u8 value){
 	int ret;
 	buff[0] = SX127X_WRITEADDR(addr);
 	buff[1] = value;
-	dev_info(&spi->dev, "write: @%02x %02x\n", addr, value);
+	dev_dbg(&spi->dev, "write: @%02x %02x\n", addr, value);
 	ret = spi_write(spi, buff, 2);
 //	ret = sx127x_reg_read(spi, reg, &readback);
 //	if(readback != value){
@@ -270,7 +270,7 @@ static int sx127x_reg_write24(struct spi_device *spi, u16 reg, u32 value){
 	buff[1] = (value >> 16) & 0xff;
 	buff[2] = (value >> 8) & 0xff;
 	buff[3] = value & 0xff;
-	dev_info(&spi->dev, "write: @%02x %06x\n", addr, value);
+	dev_dbg(&spi->dev, "write: @%02x %06x\n", addr, value);
 	ret = spi_write(spi, buff, sizeof(buff));
 	return ret;
 }
