@@ -326,6 +326,7 @@ static int sx127x_fifo_writepkt(struct spi_device *spi, void *buffer, u8 len){
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_PAYLOADLENGTH, len);
 
 	dev_info(&spi->dev, "fifo write: %d\n", len);
+	print_hex_dump(KERN_DEBUG, null, DUMP_PREFIX_NONE, 16, 1, buffer, len, true);
 	spi_sync_transfer(spi, fifotransfers, ARRAY_SIZE(fifotransfers));
 
 	ret = sx127x_reg_write(spi, SX127X_REG_LORA_FIFOADDRPTR, 0);
